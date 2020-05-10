@@ -10,13 +10,7 @@
 | contains the "web" middleware group. Now create something great!
 |
 */
-Route::get('alipay', function(){
-    return app('alipay')->web([
-        'out_trade_no' => time(),
-        'total_amount' => '1',
-        'subject' => 'test subject - 测试',
-    ]);
-});
+
 Route::redirect('/', '/products')->name('root');
 Route::get('products', 'ProductsController@index')->name('products.index');
 Auth::routes(['verify' => true]);
