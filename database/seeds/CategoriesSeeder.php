@@ -17,6 +17,7 @@ class CategoriesSeeder extends Seeder {
                     ['name' => '贴膜'],
                     ['name' => '存储卡'],
                     ['name' => '数据线'],
+                    ['name' => '充电器'],
                     [
                         'name' => '耳机',
                         'children' => [
@@ -46,6 +47,14 @@ class CategoriesSeeder extends Seeder {
                     ['name' => '一体机'],
                     ['name' => '服务器'],
                     ['name' => '工作站'],
+                ],
+            ],
+            [
+                'name' => '手机通讯',
+                'children' => [
+                    ['name' => '智能机'],
+                    ['name' => '老人机'],
+                    ['name' => '对讲机'],
                 ],
             ],
         ];
