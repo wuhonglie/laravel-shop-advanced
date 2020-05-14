@@ -12,10 +12,8 @@ use App\Exceptions\InvalidRequestException;
 use App\Jobs\CloseOrder;
 use Carbon\Carbon;
 
-class OrderService
-{
-    public function store(User $user, UserAddress $address, $remark, $items, CouponCode $coupon = null)
-    {
+class OrderService {
+    public function store(User $user, UserAddress $address, $remark, $items, CouponCode $coupon = null) {
         // 如果传入了优惠券，则先检查是否可用
         if ($coupon) {
             // 但此时我们还没有计算出订单总金额，因此先不校验
@@ -26,14 +24,14 @@ class OrderService
             // 更新此地址的最后使用时间
             $address->update(['last_used_at' => Carbon::now()]);
             // 创建一个订单
-            $order   = new Order([
-                'address'      => [ // 将地址信息放入订单中
-                    'address'       => $address->full_address,
-                    'zip'           => $address->zip,
-                    'contact_name'  => $address->contact_name,
+            $order = new Order([
+                'address' => [ // 将地址信息放入订单中
+                    'address' => $address->full_address,
+                    'zip' => $address->zip,
+                    'contact_name' => $address->contact_name,
                     'contact_phone' => $address->contact_phone,
                 ],
-                'remark'       => $remark,
+                'remark' => $remark,
                 'total_amount' => 0,
             ]);
             // 订单关联到当前用户
@@ -44,11 +42,11 @@ class OrderService
             $totalAmount = 0;
             // 遍历用户提交的 SKU
             foreach ($items as $data) {
-                $sku  = ProductSku::find($data['sku_id']);
+                $sku = ProductSku::find($data['sku_id']);
                 // 创建一个 OrderItem 并直接与当前订单关联
                 $item = $order->items()->make([
                     'amount' => $data['amount'],
-                    'price'  => $sku->price,
+                    'price' => $sku->price,
                 ]);
                 $item->product()->associate($sku->product_id);
                 $item->productSku()->associate($sku);
@@ -83,6 +81,38 @@ class OrderService
         // 这里我们直接使用 dispatch 函数
         dispatch(new CloseOrder($order, config('app.order_ttl')));
 
+        return $order;
+    }
+
+    public function crowdfunding(User $user, UserAddress $address, ProductSku $sku, $amount) {
+        $order = \DB::transaction(function () use ($amount, $sku, $user, $address) {
+            $address->update(['last_used_at' => Carbon::now()]);
+            $order = new Order([
+                'address' => [
+                    'address'       => $address->full_address,
+                    'zip'           => $address->zip,
+                    'contact_name'  => $address->contact_name,
+                    'contact_phone' => $address->contact_phone,
+                ],
+                'remark' => '',
+                'total_amount' => $sku->price * $amount,
+            ]);
+            $order->user()->associate($user);
+            $order->save();
+            $item = $order->items()->make([
+                'amount' => $amount,
+                'price'  => $sku->price,
+            ]);
+            $item->product()->associate($sku->product_id);
+            $item->productSku()->associate($sku);
+            $item->save();
+            if($sku->decreaseStock($amount)<=0){
+                throw new InvalidRequestException('该商品库存不足');
+            }
+            return $order;
+        });
+        $crowdfundingTtl = $sku->product->crowdfunding->end_at->getTimestamp() - time();
+        dispatch(new CloseOrder($order, min(config('app.order_ttl'),$crowdfundingTtl)));
         return $order;
     }
 }
