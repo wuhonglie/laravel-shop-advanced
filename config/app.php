@@ -229,4 +229,5 @@ return [
     ],
 
     'order_ttl' => 1800,
+    'zhexi_url' => env('ZHEXI_URL'),
 ];
