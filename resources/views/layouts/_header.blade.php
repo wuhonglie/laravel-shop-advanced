@@ -12,18 +12,19 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <!-- Left Side Of Navbar -->
       <ul class="navbar-nav mr-auto">
-{{--        顶部类目菜单开始--}}
-{{--        判断模板是否有$categoryTree变量--}}
+        {{--        顶部类目菜单开始--}}
+        {{--        判断模板是否有$categoryTree变量--}}
         @if(isset($categoryTree))
           <li class="nav-item dropdown">
-            <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" id="categoryTree">所有类目<b class="caret"></b></a>
+            <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" id="categoryTree">所有类目<b
+                class="caret"></b></a>
             <ul class="dropdown-menu">
-{{--              遍历$categoryTree集合，将集合中的每一项以$category变量注入layouts._category_item模板中并渲染--}}
+              {{--              遍历$categoryTree集合，将集合中的每一项以$category变量注入layouts._category_item模板中并渲染--}}
               @each('layouts._category_item', $categoryTree, 'category')
             </ul>
           </li>
         @endif
-{{--        顶部类目菜单结束--}}
+        {{--        顶部类目菜单结束--}}
       </ul>
 
       <!-- Right Side Of Navbar -->
@@ -46,6 +47,7 @@
             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
               <a href="{{ route('user_addresses.index') }}" class="dropdown-item">收货地址</a>
               <a href="{{ route('orders.index') }}" class="dropdown-item">我的订单</a>
+              <a href="{{ route('installments.index') }}" class="dropdown-item">分期付款</a>
               <a href="{{ route('products.favorites') }}" class="dropdown-item">我的收藏</a>
               <a class="dropdown-item" id="logout" href="#"
                  onclick="event.preventDefault();document.getElementById('logout-form').submit();">退出登录</a>
