@@ -30,7 +30,7 @@ class InstallmentItem extends Model
         if(!is_null($this->fine)){
             $total = bcadd($total,$this->fine,2);
         }
-        return $total;
+        return $total->getValue();
     }
 
     public function getIsOverdueAttribute()
