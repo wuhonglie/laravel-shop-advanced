@@ -22,7 +22,7 @@ class CreateInstallmentsTable extends Migration {
             $table->unsignedInteger('count');
             $table->float('fee_rate');
             $table->float('fine_rate');
-            $table->string('status')->default(\App\Models\Installment::STATUS_REPAYING);
+            $table->string('status')->default(\App\Models\Installment::STATUS_PENDING);
             $table->timestamps();
         });
     }

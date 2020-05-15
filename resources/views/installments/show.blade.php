@@ -89,7 +89,7 @@
                 </td>
                 <td>￥{{ $item->base }}</td>
                 <td>￥{{ $item->fee }}</td>
-                <td>{{ is_null($item->fine) ? '无' : ('￥'.$fine) }}</td>
+                <td>{{ is_null($item->fine) ? '无' : ('￥'.$item->fine) }}</td>
                 <td class="text-right">￥{{ $item->total }}</td>
               </tr>
             @endforeach

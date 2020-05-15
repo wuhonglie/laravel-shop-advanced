@@ -24,11 +24,16 @@ class InstallmentItem extends Model
     ];
     protected $dates = ['due_date', 'paid_at'];
 
+    public function installment()
+    {
+        return $this->belongsTo(Installment::class);
+    }
+
     public function getTotalAttribute()
     {
         $total = big_number($this->base)->add($this->fee);
         if(!is_null($this->fine)){
-            $total = bcadd($total,$this->fine,2);
+            $total->add($this->fine);
         }
         return $total->getValue();
     }
