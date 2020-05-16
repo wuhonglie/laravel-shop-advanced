@@ -7,16 +7,14 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Monolog\Logger;
 use Yansongda\Pay\Pay;
-
-class AppServiceProvider extends ServiceProvider
-{
+use Elasticsearch\ClientBuilder as ESClientBuilder;
+class AppServiceProvider extends ServiceProvider {
     /**
      * Register any application services.
      *
      * @return void
      */
-    public function register()
-    {
+    public function register() {
         // 往服务容器中注入一个名为 alipay 的单例对象
         $this->app->singleton('alipay', function () {
             $config = config('pay.alipay');
@@ -24,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
             $config['return_url'] = route('payment.alipay.return');
             // 判断当前项目运行环境是否为线上环境
             if (app()->environment() !== 'production') {
-                $config['mode']         = 'dev';
+                $config['mode'] = 'dev';
                 $config['log']['level'] = Logger::DEBUG;
             } else {
                 $config['log']['level'] = Logger::WARNING;
@@ -44,6 +42,27 @@ class AppServiceProvider extends ServiceProvider
             // 调用 Yansongda\Pay 来创建一个微信支付对象
             return Pay::wechat($config);
         });
+
+//        $this->app->singleton('es', function () {
+//            $builder = ESClientBuilder::create()->setHosts(config('database.elasticsearch.hosts'));
+//            if (app()->environment() === 'local') {
+//                $builder->setLogger(app('log')->driver());
+//            }
+//            return $builder->build();
+//        });
+
+        // 注册一个名为 es 的单例
+        $this->app->singleton('es', function () {
+            // 从配置文件读取 Elasticsearch 服务器列表
+            $builder = ESClientBuilder::create()->setHosts(config('database.elasticsearch.hosts'));
+            // 如果是开发环境
+            if (app()->environment() === 'local') {
+                // 配置日志，Elasticsearch 的请求和返回数据将打印到日志文件中，方便我们调试
+                $builder->setLogger(app('log')->driver());
+            }
+
+            return $builder->build();
+        });
     }
 
     /**
@@ -51,9 +70,8 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
-    {
+    public function boot() {
         View::composer(['products.index', 'products.show'],
-        CategoryTreeComposer::class);
+            CategoryTreeComposer::class);
     }
 }
