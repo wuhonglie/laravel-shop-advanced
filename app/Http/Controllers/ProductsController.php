@@ -44,11 +44,8 @@ class ProductsController extends Controller
                         'query' => [
                             [
                                 'term' => [
-                                    'properties.name' => $name,
+                                    'properties.search_value' => $filter,
                                 ],
-                                'term' => [
-                                    'properties.value' => $value,
-                                ]
                             ]
                         ]
                     ]
