@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
-class Product extends Model {
+class Product extends Model
+{
     const TYPE_NORMAL = 'normal';
     const TYPE_CROWDFUNDING = 'crowdfunding';
     public static $typeMap = [
@@ -22,11 +23,13 @@ class Product extends Model {
     ];
 
     // 与商品SKU关联
-    public function skus() {
+    public function skus()
+    {
         return $this->hasMany(ProductSku::class);
     }
 
-    public function getImageUrlAttribute() {
+    public function getImageUrlAttribute()
+    {
         // 如果 image 字段本身就已经是完整的 url 就直接返回
         if (Str::startsWith($this->attributes['image'], ['http://', 'https://'])) {
             return $this->attributes['image'];
@@ -34,19 +37,23 @@ class Product extends Model {
         return \Storage::disk('public')->url($this->attributes['image']);
     }
 
-    public function category() {
+    public function category()
+    {
         return $this->belongsTo(Category::class);
     }
 
-    public function crowdfunding() {
+    public function crowdfunding()
+    {
         return $this->hasOne(CrowdfundingProduct::class);
     }
 
-    public function properties() {
+    public function properties()
+    {
         return $this->hasMany(ProductProperty::class);
     }
 
-    public function getGroupedPropertiesAttribute() {
+    public function getGroupedPropertiesAttribute()
+    {
         return $this->properties
             ->groupBy('name')
             ->map(function ($properties) {
@@ -56,7 +63,7 @@ class Product extends Model {
 
     public function toESArray()
     {
-        $arr = Arr::only($this->toArray(),[
+        $arr = Arr::only($this->toArray(), [
             'id',
             'type',
             'title',
@@ -71,12 +78,17 @@ class Product extends Model {
         $arr['category'] = $this->category ? explode('-', $this->category->full_name) : '';
         $arr['category_path'] = $this->category ? $this->category->path : '';
         $arr['description'] = strip_tags($this->description);
-        $arr['skus'] = $this->skus->map(function (ProductSku $sku){
-            return Arr::only($sku->toArray(), ['title','description','price']);
+        $arr['skus'] = $this->skus->map(function (ProductSku $sku) {
+            return Arr::only($sku->toArray(), ['title', 'description', 'price']);
         });
-        $arr['properties'] = $this->properties->map(function (ProductProperty $property){
-            return array_merge(Arr::only($property->toArray(), ['name','value']),['search_value' => $property->name.':'.$property->value]);
+        $arr['properties'] = $this->properties->map(function (ProductProperty $property) {
+            return array_merge(Arr::only($property->toArray(), ['name', 'value']), ['search_value' => $property->name . ':' . $property->value]);
         });
         return $arr;
+    }
+
+    public function scopeByIds($query, $ids)
+    {
+        return $query->whereIn('id', $ids)->orderByRaw(sprintf("FIND_IN_SET(id,'%s')", join(',', $ids)));
     }
 }

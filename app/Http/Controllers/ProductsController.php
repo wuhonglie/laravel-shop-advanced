@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\SearchBuilders\ProductSearchBuilder;
 use App\Services\CategoryService;
+use App\Services\ProductService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -19,50 +20,47 @@ class ProductsController extends Controller
 
         $page = $request->input('page', 1);
         $perPage = 16;
-        $builder = (new ProductSearchBuilder())->onSale()->paginate($perPage,$page);
-        if($request->input('category_id') && $category = Category::find($request->input('category_id'))){
+        $builder = (new ProductSearchBuilder())->onSale()->paginate($perPage, $page);
+        if ($request->input('category_id') && $category = Category::find($request->input('category_id'))) {
             $builder->category($category);
         }
-        if($search = $request->input('search','')){
+        if ($search = $request->input('search', '')) {
             $keywords = array_filter(explode(' ', $search));
             $builder->keywords($keywords);
         }
-        if($search || isset($category)){
+        if ($search || isset($category)) {
             $builder->aggregateProperties();
         }
         $propertyFilters = [];
-        if($filterString = $request->input('filters')){
+        if ($filterString = $request->input('filters')) {
             $filterArray = explode('|', $filterString);
-            foreach($filterArray as $filter){
-                list($name,$value) = explode(':',$filter);
+            foreach ($filterArray as $filter) {
+                list($name, $value) = explode(':', $filter);
                 $propertyFilters[$name] = $value;
-                $builder->propertyFilter($name,$value);
+                $builder->propertyFilter($name, $value);
             }
         }
-        if($order = $request->input('order', '')){
-            if(preg_match('/^(.+)_(asc|desc)$/', $order, $m)){
-                if(in_array($m[1], ['price','sold_count','rating'])){
-                    $builder->orderBy($m[1],$m[2]);
+        if ($order = $request->input('order', '')) {
+            if (preg_match('/^(.+)_(asc|desc)$/', $order, $m)) {
+                if (in_array($m[1], ['price', 'sold_count', 'rating'])) {
+                    $builder->orderBy($m[1], $m[2]);
                 }
             }
         }
         $result = app('es')->search($builder->getParams());
         $productIds = collect($result['hits']['hits'])->pluck('_id')->all();
-        $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderByRaw(sprintf("FIND_IN_SET(id,'%s')", join(',', $productIds)))
-            ->get();
+        $products = Product::query()->byIds($productIds)->get();
         $pager = new LengthAwarePaginator($products, $result['hits']['total']['value'], $perPage, $page, [
             'path' => route('products.index'),
         ]);
         $properties = [];
-        if(isset($result['aggregations'])){
-            $properties = collect($result['aggregations']['properties']['properties']['buckets'])->map(function($bucket){
+        if (isset($result['aggregations'])) {
+            $properties = collect($result['aggregations']['properties']['properties']['buckets'])->map(function ($bucket) {
                 return [
                     'key' => $bucket['key'],
                     'values' => collect($bucket['value']['buckets'])->pluck('key')->all(),
                 ];
-            })->filter(function($property) use($propertyFilters){
+            })->filter(function ($property) use ($propertyFilters) {
                 return count($property['values']) > 1 && !isset($propertyFilters[$property['key']]);
             });
         }
@@ -78,7 +76,7 @@ class ProductsController extends Controller
         ]);
     }
 
-    public function show(Product $product, Request $request)
+    public function show(Product $product, Request $request, ProductService $service)
     {
         // 判断商品是否已经上架，如果没有上架则抛出异常。
         if (!$product->on_sale) {
@@ -101,11 +99,16 @@ class ProductsController extends Controller
             ->limit(10) // 取出 10 条
             ->get();
 
+
+        $similarProductIds = $service->getSimilarProductIds($product, 4);
+        $similarProducts = Product::query()->byIds($similarProductIds)->get();
+
         // 最后别忘了注入到模板中
         return view('products.show', [
             'product' => $product,
             'favored' => $favored,
-            'reviews' => $reviews
+            'reviews' => $reviews,
+            'similar' => $similarProducts,
         ]);
     }
 
