@@ -8,6 +8,7 @@
         <div class="card-body">
           <!-- 筛选组件开始 -->
           <form action="{{ route('products.index') }}" class="search-form">
+            <input type="hidden" name="filters">
             <div class="form-row">
               <div class="col-md-9">
                 <div class="form-row">
@@ -32,6 +33,15 @@
                       {{--                      当前类目的ID，当用户调整排序方式时，可以保证category_id参数不丢失--}}
                       <input type="hidden" name="category_id" value="{{ $category->id }}">
                     @endif
+                    {{--                    商品属性面包屑开始--}}
+                    {{--                    遍历当前属性筛选条件--}}
+                    @foreach($propertyFilters as $name => $value)
+                      <span class="filter">{{ $name }}:
+                        <span class="filter-value">{{ $value }}</span>
+                        <a href="javascript: removeFilterFromQuery('{{ $name }}')" class="remove-filter">х</a>
+                      </span>
+                    @endforeach
+                    {{--                    商品属性面包屑结束--}}
                   </div>
                   {{--                  面包屑结束--}}
                   <div class="col-auto"><input type="text" class="form-control form-control-sm" name="search"
@@ -68,6 +78,19 @@
                 </div>
               </div>
             @endif
+            {{--            分面搜索结果开始--}}
+            @foreach($properties as $property)
+              <div class="row">
+                <div class="col-3 filter-key">{{ $property['key'] }}:</div>
+                <div class="col-9 filter-values">
+                  {{--                  遍历属性值表--}}
+                  @foreach($property['values'] as $value)
+                    <a href="javascript: appendFilterToQuery('{{ $property['key'] }}', '{{ $value }}')">{{ $value }}</a>
+                  @endforeach
+                </div>
+              </div>
+            @endforeach
+            {{--            分面搜索结果结束--}}
           </div>
         {{--          展示子类目结束--}}
         <!-- 筛选组件结束 -->
@@ -103,8 +126,52 @@
 		  $('.search-form input[name=search]').val(filters.search);
 		  $('.search-form select[name=order]').val(filters.order);
 		  $('.search-form select[name=order]').on('change', function() {
+		  	var searches = parseSearch();
+		  	if(searches['filters']){
+		  		$('.search-form input[name=filters]').val(searches['filters']);
+        }
 			  $('.search-form').submit();
 		  });
 	  })
+	  function parseSearch() {
+		  var searches = {};
+		  location.search.substr(1).split('&').forEach(function(str) {
+			  var result = str.split('=');
+			  searches[decodeURIComponent(result[0])] = decodeURIComponent(result[1]);
+		  });
+		  return searches;
+	  }
+	  function buildSearch(searches) {
+		  var query = '?';
+		  _.forEach(searches, function(value, key) {
+			  query += encodeURIComponent(key) + '=' + encodeURIComponent(value) + '&'
+		  });
+		  return query.substr(0, query.length - 1);
+	  }
+	  function appendFilterToQuery(name, value) {
+		  var searches = parseSearch();
+		  if( searches['filters'] ){
+			  searches['filters'] += '|' + name + ':' + value;
+		  } else {
+			  searches['filters'] = name + ':' + value;
+		  }
+		  location.search = buildSearch(searches);
+	  }
+	  function removeFilterFromQuery(name) {
+		  var searches = parseSearch();
+		  if( !searches['filters'] ){
+			  return;
+		  }
+		  var filters = [];
+		  searches['filters'].split('|').forEach(function(filter) {
+			  var result = filter.split(':');
+			  if( result[0] === name ){
+				  return;
+			  }
+			  filters.push(filter);
+		  });
+		  searches['filters'] = filters.join('|');
+		  location.search = buildSearch(searches);
+	  }
   </script>
 @endsection

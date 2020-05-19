@@ -32,6 +32,29 @@ class ProductsController extends Controller
                 ],
             ],
         ];
+        $propertyFilters = [];
+        if($filterString = $request->input('filters')){
+            $filterArray = explode('|', $filterString);
+            foreach($filterArray as $filter){
+                list($name,$value) = explode(':', $filter);
+                $propertyFilters[$name] = $value;
+                $params['body']['query']['bool']['filter'][] = [
+                    'nested' => [
+                        'path' => 'properties',
+                        'query' => [
+                            [
+                                'term' => [
+                                    'properties.name' => $name,
+                                ],
+                                'term' => [
+                                    'properties.value' => $value,
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+            }
+        }
         if ($order = $request->input('order', '')) {
             if (preg_match('/^(.+)_(asc|desc)$/', $order, $m)) {
                 if (in_array($m[1], ['price', 'sold_count', 'rating'])) {
@@ -50,10 +73,11 @@ class ProductsController extends Controller
                 ];
             }
         }
-        if ($search = $request->input('search', '')){
+
+        if ($search = $request->input('search', '')) {
             $keywords = array_filter(explode(' ', $search));
             $params['body']['query']['bool']['must'] = [];
-            foreach($keywords as $keyword){
+            foreach ($keywords as $keyword) {
                 $params['body']['query']['bool']['must'] = [
                     [
                         'multi_match' => [
@@ -73,6 +97,29 @@ class ProductsController extends Controller
             }
 
         }
+        if($search || isset($category)){
+            $params['body']['aggs'] = [
+                'properties' => [
+                    'nested' => [
+                        'path' => 'properties',
+                    ],
+                    'aggs' => [
+                        'properties' => [
+                            'terms' => [
+                                'field' => 'properties.name',
+                            ],
+                            'aggs' => [
+                                'value' => [
+                                    'terms' => [
+                                        'field' => 'properties.value',
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ];
+        }
         $result = app('es')->search($params);
         $productIds = collect($result['hits']['hits'])->pluck('_id')->all();
         $products = Product::query()
@@ -82,7 +129,17 @@ class ProductsController extends Controller
         $pager = new LengthAwarePaginator($products, $result['hits']['total']['value'], $perPage, $page, [
             'path' => route('products.index'),
         ]);
-
+        $properties = [];
+        if(isset($result['aggregations'])){
+            $properties = collect($result['aggregations']['properties']['properties']['buckets'])->map(function($bucket){
+                return [
+                    'key' => $bucket['key'],
+                    'values' => collect($bucket['value']['buckets'])->pluck('key')->all(),
+                ];
+            })->filter(function($property) use($propertyFilters){
+                return count($property['values']) > 1 && !isset($propertyFilters[$property['key']]);
+            });
+        }
         return view('products.index', [
             'products' => $pager,
             'filters' => [
@@ -90,6 +147,8 @@ class ProductsController extends Controller
                 'order' => $order,
             ],
             'category' => $category ?? null,
+            'properties' => $properties,
+            'propertyFilters' => $propertyFilters,
         ]);
     }
 
