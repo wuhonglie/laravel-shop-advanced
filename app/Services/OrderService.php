@@ -13,6 +13,7 @@ use App\Models\ProductSku;
 use App\Exceptions\InvalidRequestException;
 use App\Jobs\CloseOrder;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class OrderService {
     public function store(User $user, UserAddress $address, $remark, $items, CouponCode $coupon = null) {
@@ -169,5 +170,38 @@ class OrderService {
                 throw new InternalException('未知订单支付方式：' . $order->payment_method);
                 break;
         }
+    }
+
+    public function seckill(User $user, UserAddress $address, ProductSku $sku)
+    {
+        $order = DB::transaction(function() use ($user, $address, $sku){
+            $address->update(['last_used_at' => Carbon::now()]);
+            if($sku->decreaseStock(1) <= 0 ){
+                throw new InvalidRequestException('该商品库存不足');
+            }
+            $order = new Order([
+                'address' => [
+                    'address' => $address->full_address,
+                    'zip' => $address->zip,
+                    'contact_name' => $address->contact_name,
+                    'contact_phone' => $address->contact_phone,
+                ],
+                'remark' => '',
+                'total_amount' => $sku->price,
+                'type' => Order::TYPE_SECKILL,
+            ]);
+            $order->user()->associate($user);
+            $order->save();
+            $item = $order->items()->make([
+                'amount' => 1,
+                'price' => $sku->price,
+            ]);
+            $item->product()->associate($sku->product_id);
+            $item->productSku()->associate($sku);
+            $item->save();
+            return $order;
+        });
+        dispatch(new CloseOrder($order, config('app.seckill_order_ttl')));
+        return $order;
     }
 }

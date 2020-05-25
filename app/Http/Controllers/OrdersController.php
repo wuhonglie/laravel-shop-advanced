@@ -8,6 +8,7 @@ use App\Exceptions\InvalidRequestException;
 use App\Http\Requests\ApplyRefundRequest;
 use App\Http\Requests\CrowdFundingOrderRequest;
 use App\Http\Requests\OrderRequest;
+use App\Http\Requests\SeckillOrderRequest;
 use App\Http\Requests\SendReviewRequest;
 use App\Models\CouponCode;
 use App\Models\ProductSku;
@@ -17,8 +18,10 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Services\OrderService;
 
-class OrdersController extends Controller {
-    public function index(Request $request) {
+class OrdersController extends Controller
+{
+    public function index(Request $request)
+    {
         $orders = Order::query()
             // 使用 with 方法预加载，避免N + 1问题
             ->with(['items.product', 'items.productSku'])
@@ -29,7 +32,8 @@ class OrdersController extends Controller {
         return view('orders.index', ['orders' => $orders]);
     }
 
-    public function store(OrderRequest $request, OrderService $orderService) {
+    public function store(OrderRequest $request, OrderService $orderService)
+    {
         $user = $request->user();
         $address = UserAddress::find($request->input('address_id'));
         $coupon = null;
@@ -45,12 +49,14 @@ class OrdersController extends Controller {
         return $orderService->store($user, $address, $request->input('remark'), $request->input('items'), $coupon);
     }
 
-    public function show(Order $order, Request $request) {
+    public function show(Order $order, Request $request)
+    {
         $this->authorize('own', $order);
         return view('orders.show', ['order' => $order->load(['items.productSku', 'items.product'])]);
     }
 
-    public function received(Order $order, Request $request) {
+    public function received(Order $order, Request $request)
+    {
         // 校验权限
         $this->authorize('own', $order);
 
@@ -66,7 +72,8 @@ class OrdersController extends Controller {
         return $order;
     }
 
-    public function review(Order $order) {
+    public function review(Order $order)
+    {
         // 校验权限
         $this->authorize('own', $order);
         // 判断是否已经支付
@@ -77,7 +84,8 @@ class OrdersController extends Controller {
         return view('orders.review', ['order' => $order->load(['items.productSku', 'items.product'])]);
     }
 
-    public function sendReview(Order $order, SendReviewRequest $request) {
+    public function sendReview(Order $order, SendReviewRequest $request)
+    {
         // 校验权限
         $this->authorize('own', $order);
         if (!$order->paid_at) {
@@ -108,14 +116,15 @@ class OrdersController extends Controller {
         return redirect()->back();
     }
 
-    public function applyRefund(Order $order, ApplyRefundRequest $request) {
+    public function applyRefund(Order $order, ApplyRefundRequest $request)
+    {
         // 校验订单是否属于当前用户
         $this->authorize('own', $order);
         // 判断订单是否已付款
         if (!$order->paid_at) {
             throw new InvalidRequestException('该订单未支付，不可退款');
         }
-        if($order->type === Order::TYPE_CROWDFUNDING){
+        if ($order->type === Order::TYPE_CROWDFUNDING) {
             throw new InvalidRequestException('众筹订单不支持退款');
         }
         // 判断订单退款状态是否正确
@@ -135,11 +144,20 @@ class OrdersController extends Controller {
     }
 
     // 众筹商品下单请求
-    public function crowdfunding(CrowdFundingOrderRequest $request, OrderService $orderService) {
+    public function crowdfunding(CrowdFundingOrderRequest $request, OrderService $orderService)
+    {
         $user = $request->user();
         $sku = ProductSku::find($request->input('sku_id'));
         $address = UserAddress::find($request->input('address_id'));
         $amount = $request->input('amount');
         return $orderService->crowdfunding($user, $address, $sku, $amount);
+    }
+
+    public function seckill(SeckillOrderRequest $request, OrderService $orderService)
+    {
+        $user = $request->user();
+        $address = UserAddress::find($request->input('address_id'));
+        $sku = ProductSku::find($request->input('sku_id'));
+        return $orderService->seckill($user, $address, $sku);
     }
 }
