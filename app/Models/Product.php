@@ -91,4 +91,9 @@ class Product extends Model
     {
         return $query->whereIn('id', $ids)->orderByRaw(sprintf("FIND_IN_SET(id,'%s')", join(',', $ids)));
     }
+
+    public function seckill()
+    {
+        return $this->hasOne(SeckillProduct::class);
+    }
 }
