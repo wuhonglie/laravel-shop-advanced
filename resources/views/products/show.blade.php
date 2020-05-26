@@ -271,7 +271,7 @@
 			  var $form = $('<form></form>');
 			  $form.append(`<div class="form-group row">` +
 				  `<label class="col-form-label col-sm-3">选择地址</label>` +
-				  `<div class="col-sm-9">` +
+				  `<div class="col-sm-9">` +``
 				  `<select class="custom-select" name="address_id"></select>` +
 				  `</div></div>`);
 			  addresses.forEach(function(address) {
@@ -358,8 +358,9 @@
 					if(!ret){
 						return;
 					}
+					var address = _.find(addresses, {id: parseInt(addressSelect.val())});
 					var req = {
-						address_id: addressSelect.val(),
+						address: _.pick(address, ['province', 'city', 'district', 'address', 'zip', 'contact_name', 'contact_phone']),
 						sku_id: $('label.active input[name=skus]').val()
 					};
 					axios.post('{{ route('seckill_orders.store') }}', req)
