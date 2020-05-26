@@ -15,14 +15,14 @@ class SeckillProductsController extends CommonProductsController
     protected function customGrid(Grid $grid)
     {
         $grid->id('ID')->sortable();
-        $grid->title('上坪名称');
+        $grid->title('商品名称');
         $grid->on_sale('已上架')->display(function ($value){
             return $value ? '是' : '否';
         });
         $grid->price('价格');
         $grid->column('seckill.start_at', '开始时间');
         $grid->column('seckill.end_at', '结束时间');
-        $grid->sold_count('数量');
+        $grid->sold_count('销量');
     }
 
     protected function customForm(Form $form)
