@@ -17,7 +17,6 @@ class ProductsController extends Controller
 {
     public function index(Request $request)
     {
-
         $page = $request->input('page', 1);
         $perPage = 16;
         $builder = (new ProductSearchBuilder())->onSale()->paginate($perPage, $page);

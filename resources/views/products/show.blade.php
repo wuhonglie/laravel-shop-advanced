@@ -271,7 +271,7 @@
 			  var $form = $('<form></form>');
 			  $form.append(`<div class="form-group row">` +
 				  `<label class="col-form-label col-sm-3">选择地址</label>` +
-				  `<div class="col-sm-9">` +``
+				  `<div class="col-sm-9">` +
 				  `<select class="custom-select" name="address_id"></select>` +
 				  `</div></div>`);
 			  addresses.forEach(function(address) {
